@@ -3,6 +3,11 @@ logstash-cif
 
 Logstash Filter to Query a CIF Server
 
+Build
+=====
+
+Run 'make tarball' to build the project. A tarball will end up in ./build. Extract the file over top of your logstash directory. 
+(Hint: or, just copy the ./lib and ./vendor directories to your logstash folder)
 
 
 Config
