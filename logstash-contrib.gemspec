@@ -14,4 +14,6 @@ Gem::Specification.new do |gem|
   gem.name          = "logstash-cif"
   gem.require_paths = ["lib"]
   gem.version       = LOGSTASH_VERSION
+
+  gem.add_runtime_dependency "net-http-persistent" 
 end

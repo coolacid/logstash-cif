@@ -3,8 +3,12 @@ logstash-cif
 
 Logstash Filter to Query a CIF Server
 
+
+
 Config
 ======
+
+This is an example config. Replace host with your host string, and the apikey with an API key registered on your CIF server.
 
 ```
 input {

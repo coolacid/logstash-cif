@@ -43,7 +43,26 @@ class LogStash::Filters::CIF < LogStash::Filters::Base
     require 'json'
     require 'net/http'
     require 'net/https'
+    require 'net/http/persistent'
+
     require 'openssl'
+
+    # Start building the URI, we'll append the query later
+    params = {'apikey' => @apikey}
+    params['restriction'] = restriction || @restriction if restriction || @restriction
+    params['severity'] = severity || @severity if severity || @severity
+    params['nolog'] = 1 if nolog || @nolog
+    @s = "#{@host}?"+params.map{|k,v| "#{k}=#{v}"}.join("&")
+    @logger.debug("Connection URL", :connect => @s)
+
+    # Start a new Persistent HTTPS connection
+    @http = Net::HTTP::Persistent.new 'Logstash'
+    # Assume we don't have a valid cert, maybe this should be an option?
+    @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    @http.idle_timeout = nil
+    # Set some headers so the other side knows who we are, and what we want.
+    @http.headers["User-Agent"] = "Ruby/#{RUBY_VERSION} logstash"
+    @http.headers["Accept"] = "application/json"
   end # def register
 
   public
@@ -51,27 +70,18 @@ class LogStash::Filters::CIF < LogStash::Filters::Base
     return unless filter?(event)
 
     begin
-      # Alot of this is from the CIF-CLIENT gem, which doesn't appear to work, or be maintained.
+      # Finish off building the URI with the query coming from @source
       ip = event[@source]
-      @logger.info("CIF query for: ", :ip => ip)
+      uri = URI @s+"&query="+ip
 
-      params = {'apikey' => @apikey}
-      params['restriction'] = restriction || @restriction if restriction || @restriction
-      params['severity'] = severity || @severity if severity || @severity
-      params['nolog'] = 1 if nolog || @nolog
-      params['query'] = ip
-      s = "#{@host}?"+params.map{|k,v| "#{k}=#{v}"}.join("&")
-      @logger.debug("Connection URL", :connect => s)
-      url = URI.parse s
-      http = Net::HTTP.new(url.host, url.port)
-      http.use_ssl = (url.scheme == 'https')
-      http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-      http.verify_depth = 5
-      request = Net::HTTP::Get.new(url.path+"?"+url.query)
-      request.add_field("User-Agent", "Ruby/#{RUBY_VERSION} logstash")
-      request.add_field("Accept", "application/json")
-      response = http.request(request)
+      @logger.info("CIF query for", :ip => ip)
+      @logger.debug("Full Query URI", :uri => uri)
+
+      # Request the URI built above
+      response = @http.request uri
       doc = response.body
+
+      # CIF responds with a set of JSON responses, one per line, so go though them and add them to the @event
       doc.each_line do |line|
         data = JSON.parse(line)
         (event[@target] ||= []) << data
