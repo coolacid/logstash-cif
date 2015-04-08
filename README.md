@@ -1,3 +1,9 @@
+** No Longer Maintained **
+==========================
+
+Note: CIFv2 uses Elasticsearch as a back end, thus you can use the elasticsearch filter. 
+
+
 logstash-cif
 ============
 
